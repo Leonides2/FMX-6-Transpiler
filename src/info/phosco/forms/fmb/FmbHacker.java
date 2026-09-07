@@ -1,12 +1,18 @@
 package info.phosco.forms.fmb;
 
+import info.phosco.forms.xml.XmlWriter;
+
+import java.io.FileOutputStream;
+import java.io.OutputStreamWriter;
+import java.nio.charset.StandardCharsets;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 
 /**
  * Command-line entry point: extracts every trigger and program unit (full
- * PL/SQL source) from a .fmb file and prints them, grouped by owner.
+ * PL/SQL source) from a .fmb file and either prints a human-readable report
+ * or writes it out as XML (see {@link FmbXmlExporter}).
  * <p>
  * This is deliberately independent from {@code info.phosco.forms.translate}
  * (the .fmx parser) - the .fmb uses a different, much simpler storage scheme,
@@ -18,7 +24,9 @@ public class FmbHacker {
 
 		if (args.length < 1) {
 			System.out.println("FMB Logic Extractor v0.1");
-			System.out.println("Usage: java -cp build info.phosco.forms.fmb.FmbHacker archivo.fmb");
+			System.out.println("Usage: java -cp build info.phosco.forms.fmb.FmbHacker archivo.fmb [output.xml]");
+			System.out.println("  Sin segundo argumento: imprime un reporte de texto en pantalla.");
+			System.out.println("  Con segundo argumento: escribe XML en esa ruta (y solo un resumen en pantalla).");
 			System.exit(1);
 		}
 
@@ -27,44 +35,57 @@ public class FmbHacker {
 
 		List<ExtractedTrigger> triggers = scanner.scanTriggers();
 		List<ExtractedProgramUnit> units = scanner.scanProgramUnits();
+		List<NameAnchor> nameAnchors = new NameAnchorScanner(buf).scan();
 
-		// group triggers by owner, then by name - warn instead of silently
-		// picking one when the .fmb's duplicate copies disagree.
-		Map<String, Map<String, List<String>>> byOwner = new LinkedHashMap<>();
-		for (ExtractedTrigger t : triggers) {
-			byOwner.computeIfAbsent(t.ownerKey(), k -> new LinkedHashMap<>())
-					.computeIfAbsent(t.name, k -> new java.util.ArrayList<>())
-					.add(t.source);
+		if (args.length >= 2) {
+			try (XmlWriter xml = new XmlWriter(new OutputStreamWriter(new FileOutputStream(args[1]), StandardCharsets.UTF_8))) {
+				FmbXmlExporter.export(args[0], triggers, units, nameAnchors, xml);
+			}
+			System.out.println("Escrito " + args[1] + " (" + TriggerGroup.groupAll(triggers).size() + " triggers, "
+					+ ProgramUnitGroup.groupAll(units).size() + " program units, " + nameAnchors.size()
+					+ " nombres detectados; de " + triggers.size() + "/" + units.size() + " coincidencias crudas).");
+			return;
 		}
 
-		System.out.println("=== TRIGGERS (" + triggers.size() + " raw matches) ===");
-		for (Map.Entry<String, Map<String, List<String>>> ownerEntry : byOwner.entrySet()) {
+		printTextReport(triggers, units, nameAnchors);
+	}
+
+	private static void printTextReport(List<ExtractedTrigger> rawTriggers, List<ExtractedProgramUnit> rawUnits, List<NameAnchor> nameAnchors) {
+
+		System.out.println("=== NOMBRES DETECTADOS (" + nameAnchors.size() + ", orden de aparición en el archivo) ===");
+		System.out.println("(bloques, items, valores de radio, alertas... sin clasificar por rol - ver docs/fmx-bytecode-notes.md)");
+		for (NameAnchor n : nameAnchors) {
+			System.out.println("  " + n);
+		}
+		System.out.println();
+
+		Map<String, List<TriggerGroup>> byOwner = new LinkedHashMap<>();
+		for (TriggerGroup g : TriggerGroup.groupAll(rawTriggers)) {
+			byOwner.computeIfAbsent(g.ownerKey(), k -> new java.util.ArrayList<>()).add(g);
+		}
+
+		System.out.println("=== TRIGGERS (" + rawTriggers.size() + " raw matches) ===");
+		for (Map.Entry<String, List<TriggerGroup>> ownerEntry : byOwner.entrySet()) {
 			System.out.println("\n[" + ownerEntry.getKey() + "]");
-			for (Map.Entry<String, List<String>> nameEntry : ownerEntry.getValue().entrySet()) {
-				List<String> sources = nameEntry.getValue();
-				long distinct = sources.stream().distinct().count();
-				if (distinct > 1) {
-					System.out.println("  " + nameEntry.getKey() + "  (!) " + distinct + " DIFFERENT copies found, showing all:");
+			for (TriggerGroup g : ownerEntry.getValue()) {
+				if (g.hasConflict()) {
+					System.out.println("  " + g.name + "  (!) " + g.distinctSources.size() + " DIFFERENT copies found, showing all:");
 					int i = 1;
-					for (String s : sources.stream().distinct().toArray(String[]::new)) {
+					for (String s : g.distinctSources) {
 						System.out.println("    --- copy " + (i++) + " ---\n" + indent(s));
 					}
 				} else {
-					System.out.println("  " + nameEntry.getKey() + ":");
-					System.out.println(indent(sources.get(0)));
+					System.out.println("  " + g.name + ":");
+					System.out.println(indent(g.distinctSources.get(0)));
 				}
 			}
 		}
 
-		System.out.println("\n=== PROGRAM UNITS (" + units.size() + " raw matches) ===");
-		Map<String, List<String>> puByName = new LinkedHashMap<>();
-		for (ExtractedProgramUnit u : units) {
-			puByName.computeIfAbsent(u.name, k -> new java.util.ArrayList<>()).add(u.source);
-		}
-		for (Map.Entry<String, List<String>> e : puByName.entrySet()) {
-			List<String> sources = e.getValue().stream().distinct().toList();
-			System.out.println("\n" + e.getKey() + (sources.size() > 1 ? "  (!) " + sources.size() + " DIFFERENT copies found:" : ":"));
-			for (String s : sources) {
+		List<ProgramUnitGroup> units = ProgramUnitGroup.groupAll(rawUnits);
+		System.out.println("\n=== PROGRAM UNITS (" + rawUnits.size() + " raw matches) ===");
+		for (ProgramUnitGroup g : units) {
+			System.out.println("\n" + g.name + (g.hasConflict() ? "  (!) " + g.distinctSources.size() + " DIFFERENT copies found:" : ":"));
+			for (String s : g.distinctSources) {
 				System.out.println(indent(s));
 			}
 		}

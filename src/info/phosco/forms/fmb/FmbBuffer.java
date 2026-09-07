@@ -39,6 +39,10 @@ public class FmbBuffer {
 		return data.length;
 	}
 
+	public int byteAt(int pos) {
+		return data[pos] & 0xFF;
+	}
+
 	/**
 	 * Reads a [4-byte length][bytes] record starting exactly at pos.
 	 *
