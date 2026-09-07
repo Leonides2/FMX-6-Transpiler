@@ -3,7 +3,6 @@ package info.phosco.forms.translate.element.alert;
 import info.phosco.forms.translate.bytes.Content;
 import info.phosco.forms.translate.element.AbstractFactory;
 import info.phosco.forms.translate.element.Direction;
-import info.phosco.forms.translate.element.visual.substruct.VisualSubStructFactory;
 import info.phosco.forms.translate.util.FileStructureTypeException;
 
 public class FormAlertFactory extends AbstractFactory {
@@ -27,8 +26,6 @@ public class FormAlertFactory extends AbstractFactory {
 	private final static int POS_TITLE_LEN = 0x24;
 
 	private final static int POS_BITMASK = 0x28;
-
-	private final static int POS_VISUAL_SUBSTRUCT = 0x2c;
 
 	private final static int POS_MESSAGE = 0x38;
 
@@ -71,9 +68,6 @@ public class FormAlertFactory extends AbstractFactory {
 		res.setProperty(AlertAttributes.DEFAULT_BUTTON, AlertButton.lookup(bitmask & 0x38));
 
 		res.setProperty(AlertAttributes.DIRECTION, Direction.lookup(content.getInt(offset, POS_DIRECTION)));
-
-		ref = content.getInt(offset, POS_VISUAL_SUBSTRUCT);
-		res.setProperty(AlertAttributes.VISUAL_STRUCT, VisualSubStructFactory.instance(content, ref));
 
 		// TODO: read properties
 

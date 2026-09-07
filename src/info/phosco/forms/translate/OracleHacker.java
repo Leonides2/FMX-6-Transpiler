@@ -10,22 +10,9 @@ import info.phosco.forms.translate.util.LogHandler;
 import java.util.logging.Level;
 import java.util.logging.Logger;
 
-import javax.imageio.ImageIO;
-
 public class OracleHacker {
 
 	private final static Logger log = Log.getLogger(OracleHacker.class);
-
-	private static void usableImageIOReaders() {
-
-		// ImageIO-Plugins from https://github.com/haraldk/TwelveMonkeys
-
-		StringBuffer buf = new StringBuffer();
-		for (String name : ImageIO.getReaderFormatNames()) {
-			buf.append(name + "\n");
-		}
-		log.info(buf.toString());
-	}
 
 	public static void main(String[] args) {
 
@@ -50,8 +37,6 @@ public class OracleHacker {
 		}
 
 		LogHandler.init(level);
-
-		usableImageIOReaders();
 
 		try {
 			log.info("\nName of file: " + args[0]);

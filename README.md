@@ -1,8 +1,13 @@
 # fmx.6.decompiler
-Decompiler for Oracle FMX files version 6
 
-It is an old research project to rescue Forms.6 applications. It doesn't work with all functionalities of FMX.6 files. No time at the moment to enhance it.
+Extractor de lógica de negocio (triggers PL/SQL, program units, definición de bloques/queries, parámetros, record groups, librerías) desde archivos Oracle Forms 6 `.fmx`, pensado para migrar esa lógica a otro lenguaje/plataforma.
 
-You have to compile it with JDK 1.8.
+Nace como fork de un decompilador de investigación para Forms 6 que reconstruía la UI completa (canvas, ventanas, fuentes, gráficos). Ese código de UI se eliminó a propósito: aquí el objetivo no es reconstruir el formulario, sino extraer su lógica. No se decodifican imágenes: quedan como referencia/placeholder.
 
-Start with `info/phosco/forms/viewer/tabbed/Desktop.java` (graphical UI) or `info/phosco/forms/translate/OracleHacker.java` (command-line).
+No funciona con todas las funcionalidades de los archivos FMX.6 — varios offsets siguen sin identificar (ver `TODO`s en el código) y es trabajo en curso.
+
+Compílalo con JDK 1.8+. Punto de entrada: `info/phosco/forms/translate/OracleHacker.java` (línea de comandos):
+
+```
+java -jar decompiler.jar archivo.fmx <debug|info|warn|off>
+```

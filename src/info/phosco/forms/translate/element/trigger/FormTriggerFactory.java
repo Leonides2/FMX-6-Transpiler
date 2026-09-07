@@ -42,7 +42,15 @@ public class FormTriggerFactory extends AbstractFactory {
 		res.setProperty(TriggerAttributes.FIRE_ENTER_QUERY, !bool(bitmask & 0x8));
 
 		res.setProperty(TriggerAttributes.STYLE, "PL/SQL");  // somewhere coded?
-		
+
+		// PL/SQL source of the trigger body. Offset validated against known
+		// module-level trigger names; still needs cross-check against a real
+		// .fmb (Forms Builder) for byte-exact correctness.
+		ref = content.getInt(offset, POS_TRIGGER_TEXT);
+		if (ref != 0x0) {
+			res.setProperty(TriggerAttributes.TEXT, content.getString(ref, 0));
+		}
+
 		// TODO: read properties
 
 		return res;

@@ -11,17 +11,12 @@ import info.phosco.forms.translate.element.alert.FormAlert;
 import info.phosco.forms.translate.element.application.FormModule;
 import info.phosco.forms.translate.element.application.FormModuleFactory;
 import info.phosco.forms.translate.element.application.ModuleAttributes;
-import info.phosco.forms.translate.element.canvas.FormCanvas;
 import info.phosco.forms.translate.element.datablock.FormDataBlock;
-import info.phosco.forms.translate.element.editor.FormEditor;
-import info.phosco.forms.translate.element.font.FormFont;
 import info.phosco.forms.translate.element.library.FormLibrary;
 import info.phosco.forms.translate.element.parameter.FormParameter;
 import info.phosco.forms.translate.element.program.FormProgramUnit;
 import info.phosco.forms.translate.element.recordgroup.FormRecordGroup;
 import info.phosco.forms.translate.element.trigger.FormTrigger;
-import info.phosco.forms.translate.element.visual.attribute.FormVisualGroup;
-import info.phosco.forms.translate.element.window.FormWindow;
 import info.phosco.forms.translate.loader.Decompiler;
 import info.phosco.forms.translate.util.DecompilerException;
 import info.phosco.forms.translate.util.Log;
@@ -57,18 +52,6 @@ public class Forms6Decompiler extends AbstractDecompiler implements Decompiler {
 			output += "\n" + d.toString();
 		}
 
-		for (FormCanvas v : (ElementList<FormCanvas>) app.getProperty(ModuleAttributes.CANVAS_LIST)) {
-			output += "\n" + v.toString();
-		}
-
-		for (FormFont font : (ElementList<FormFont>) app.getProperty(ModuleAttributes.FONT_LIST)) {
-			output += "\n" + (font == null ? "DEFAULT FONT" : font.toString());
-		}
-
-		for (FormEditor e : (ElementList<FormEditor>) app.getProperty(ModuleAttributes.EDITOR_LIST)) {
-			output += "\n" + e.toString();
-		}
-
 		for (FormParameter p : (ElementList<FormParameter>) app.getProperty(ModuleAttributes.PARAMETER_LIST)) {
 			output += "\n" + p.toString();
 		}
@@ -79,14 +62,6 @@ public class Forms6Decompiler extends AbstractDecompiler implements Decompiler {
 
 		for (FormRecordGroup rg : (ElementList<FormRecordGroup>) app.getProperty(ModuleAttributes.RECORD_GROUP_LIST)) {
 			output += "\n" + rg.toString();
-		}
-
-		for (FormVisualGroup vg : (ElementList<FormVisualGroup>) app.getProperty(ModuleAttributes.VISUAL_GROUP_LIST)) {
-			output += "\n" + vg.toString();
-		}
-
-		for (FormWindow w : (ElementList<FormWindow>) app.getProperty(ModuleAttributes.WINDOW_LIST)) {
-			output += "\n" + w.toString();
 		}
 
 		return output;

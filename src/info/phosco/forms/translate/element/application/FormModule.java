@@ -1,21 +1,7 @@
 package info.phosco.forms.translate.element.application;
 
-import info.phosco.forms.translate.element.ElementList;
 import info.phosco.forms.translate.element.ElementType;
 import info.phosco.forms.translate.element.FormElement;
-import info.phosco.forms.translate.element.alert.FormAlert;
-import info.phosco.forms.translate.element.canvas.CanvasAttributes;
-import info.phosco.forms.translate.element.canvas.FormCanvas;
-import info.phosco.forms.translate.element.canvas.graphic.FormGroup;
-import info.phosco.forms.translate.element.datablock.FormDataBlock;
-import info.phosco.forms.translate.element.editor.FormEditor;
-import info.phosco.forms.translate.element.library.FormLibrary;
-import info.phosco.forms.translate.element.parameter.FormParameter;
-import info.phosco.forms.translate.element.program.FormProgramUnit;
-import info.phosco.forms.translate.element.recordgroup.FormRecordGroup;
-import info.phosco.forms.translate.element.trigger.FormTrigger;
-import info.phosco.forms.translate.element.visual.attribute.FormVisualGroup;
-import info.phosco.forms.translate.element.window.FormWindow;
 
 import java.util.Properties;
 
@@ -91,88 +77,6 @@ public class FormModule implements FormElement<ModuleAttributes> {
 		out += "\nLaufzeit-Kompatibilitätsmodus              : " + getProperty(ModuleAttributes.RUNTIME_COMPATIBILITY);
 		return out;
 
-	}
-
-	@SuppressWarnings("unchecked")
-	public FormElement<?> getElementAtOffset(int offset) {
-		if (offset == getOffset()) {
-			return this;
-		}
-
-		for (FormTrigger t : (ElementList<FormTrigger>) getProperty(ModuleAttributes.TRIGGER_LIST)) {
-			if (t.getOffset() == offset) {
-				return t;
-			}
-		}
-
-		for (FormAlert w : (ElementList<FormAlert>) getProperty(ModuleAttributes.WARNING_LIST)) {
-			if (w.getOffset() == offset) {
-				return w;
-			}
-		}
-
-		for (FormLibrary l : (ElementList<FormLibrary>) getProperty(ModuleAttributes.LIBRARY_LIST)) {
-			if (l.getOffset() == offset) {
-				return l;
-			}
-		}
-
-		for (FormDataBlock d : (ElementList<FormDataBlock>) getProperty(ModuleAttributes.DATABLOCK_LIST)) {
-			if (d.getOffset() == offset) {
-				return d;
-			}
-			// TODO: check sub tree
-		}
-
-		for (FormCanvas v : (ElementList<FormCanvas>) getProperty(ModuleAttributes.CANVAS_LIST)) {
-			if (v.getOffset() == offset) {
-				return v;
-			}
-			if (v.hasGraphicTree()) {
-				FormGroup node = (FormGroup) v.getProperty(CanvasAttributes.GRAPHIC_TREE);
-				FormElement<?> e = node.getElementAtOffset(offset);
-				if (e != null) {
-					return e;
-				}
-			}
-		}
-
-		for (FormEditor e : (ElementList<FormEditor>) getProperty(ModuleAttributes.EDITOR_LIST)) {
-			if (e.getOffset() == offset) {
-				return e;
-			}
-		}
-
-		for (FormParameter p : (ElementList<FormParameter>) getProperty(ModuleAttributes.PARAMETER_LIST)) {
-			if (p.getOffset() == offset) {
-				return p;
-			}
-		}
-
-		for (FormProgramUnit u : (ElementList<FormProgramUnit>) getProperty(ModuleAttributes.PROGRAM_UNIT_LIST)) {
-			if (u.getOffset() == offset) {
-				return u;
-			}
-		}
-
-		for (FormRecordGroup rg : (ElementList<FormRecordGroup>) getProperty(ModuleAttributes.RECORD_GROUP_LIST)) {
-			if (rg.getOffset() == offset) {
-				return rg;
-			}
-		}
-
-		for (FormVisualGroup vg : (ElementList<FormVisualGroup>) getProperty(ModuleAttributes.VISUAL_GROUP_LIST)) {
-			if (vg.getOffset() == offset) {
-				return vg;
-			}
-		}
-
-		for (FormWindow w : (ElementList<FormWindow>) getProperty(ModuleAttributes.WINDOW_LIST)) {
-			if (w.getOffset() == offset) {
-				return w;
-			}
-		}
-		return null;
 	}
 
 }

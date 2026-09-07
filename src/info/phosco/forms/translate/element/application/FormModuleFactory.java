@@ -4,21 +4,14 @@ import info.phosco.forms.translate.bytes.Content;
 import info.phosco.forms.translate.bytes.FileStructureType;
 import info.phosco.forms.translate.element.AbstractFactory;
 import info.phosco.forms.translate.element.Direction;
-import info.phosco.forms.translate.element.ElementList;
 import info.phosco.forms.translate.element.alert.AlertListFactory;
-import info.phosco.forms.translate.element.canvas.CanvasListFactory;
 import info.phosco.forms.translate.element.datablock.DataBlockListFactory;
-import info.phosco.forms.translate.element.editor.EditorListFactory;
-import info.phosco.forms.translate.element.font.FontListFactory;
-import info.phosco.forms.translate.element.font.FormFont;
 import info.phosco.forms.translate.element.library.LibraryListFactory;
 import info.phosco.forms.translate.element.parameter.ParameterListFactory;
 import info.phosco.forms.translate.element.program.ProgramUnitListFactory;
 import info.phosco.forms.translate.element.recordgroup.RecordGroupListFactory;
 import info.phosco.forms.translate.element.trigger.TriggerListFactory;
 import info.phosco.forms.translate.element.trigger.UserNamedListFactory;
-import info.phosco.forms.translate.element.visual.attribute.VisualGroupListFactory;
-import info.phosco.forms.translate.element.window.WindowListFactory;
 import info.phosco.forms.translate.util.ColumnDatatypeException;
 import info.phosco.forms.translate.util.DateFormatException;
 import info.phosco.forms.translate.util.FileStructureTypeException;
@@ -35,38 +28,38 @@ public class FormModuleFactory extends AbstractFactory {
 	private static final int POS_MENU_MODULE = 0x10;
 
 	private static final int POS_TRIGGER_LIST = 0x28;
-	
+
 	private static final int POS_TRIGGER_LIST_LEN = 0x2C;
-	
+
 	private static final int POS_PROGRAM_UNIT_LIST = 0x30;
-	
+
 	// TODO: 0x34 ?
-	
+
 	private static final int POS_DATABLOCK_LIST = 0x38;
 
-	private static final int POS_WINDOW_LIST = 0x3c;
+	// TODO: 0x3c ? (was window list, purely UI, no longer parsed)
 
-	private static final int POS_CANVAS_LIST = 0x40;
+	// TODO: 0x40 ? (was canvas list, purely UI, no longer parsed)
 
 	private static final int POS_WARNING_LIST = 0x44;
 
-	private static final int POS_EDITOR_LIST = 0x48;
+	// TODO: 0x48 ? (was editor list, purely UI, no longer parsed)
 
 	// TODO: 0x4c ?
 
 	private static final int POS_PARAMETER_LIST = 0x50;
 
-	// TODO: 0x54 ?	
+	// TODO: 0x54 ?
 
 	private static final int POS_DATABLOCK_LIST_LEN = 0x58;
 
-	private static final int POS_WINDOW_LIST_LEN = 0x5C;
+	// TODO: 0x5C ? (was window list length)
 
-	private static final int POS_CANVAS_LIST_LEN = 0x60;
+	// TODO: 0x60 ? (was canvas list length)
 
 	private static final int POS_WARNING_LIST_LEN = 0x64;
 
-	private static final int POS_EDITOR_LIST_LEN = 0x68;
+	// TODO: 0x68 ? (was editor list length)
 
 	// TODO: 0x6C ?
 
@@ -78,24 +71,24 @@ public class FormModuleFactory extends AbstractFactory {
 
 	private static final int POS_MOUSE_NAVIGATION = 0x80;
 
-	private static final int POS_VISUAL_GROUP_LIST = 0x84;
+	// TODO: 0x84 ? (was visual group list, purely UI, no longer parsed)
 
-	private static final int POS_VISUAL_GROUP_LIST_LEN = 0x88;
+	// TODO: 0x88 ? (was visual group list length)
 
 	// TODO: 0x8C ?
-	
+
 	private static final int POS_USER_NAMED_LIST = 0x90;
-	
+
 	private static final int POS_USER_NAMED_LIST_LEN = 0x94;
-	
+
 	// TODO: 0x98 ?
-	
-	private static final int POS_FONT_LIST = 0x9c;
+
+	// TODO: 0x9c ? (was font list, purely UI, no longer parsed)
 
 	private static final int POS_MENU_SOURCE = 0xAC;
 
 	private static final int POS_LIBRARY_LIST = 0xB0;
-	
+
 	// TODO: 0xB4 ?
 
 	private static final int POS_CHARACTERSET = 0xB8;
@@ -114,7 +107,7 @@ public class FormModuleFactory extends AbstractFactory {
 
 	private static final int POS_RECORD_GROUP_LIST = 0xF4;
 
-	private static final int POS_FONT_LIST_LEN = 0xFC;
+	// TODO: 0xFC ? (was font list length)
 
 	private static final int POS_DIRECTION = 0x108;
 
@@ -155,23 +148,6 @@ public class FormModuleFactory extends AbstractFactory {
 		int len = content.getInt(offset, POS_DATABLOCK_LIST_LEN);
 		res.setProperty(ModuleAttributes.DATABLOCK_LIST, DataBlockListFactory.get(content, ref, len));
 
-		ref = content.getInt(offset, POS_WINDOW_LIST);
-		len = content.getInt(offset, POS_WINDOW_LIST_LEN);
-		res.setProperty(ModuleAttributes.WINDOW_LIST, WindowListFactory.get(content, ref, len));
-
-		ref = content.getInt(offset, POS_FONT_LIST);
-		len = content.getInt(offset, POS_FONT_LIST_LEN);
-		ElementList<FormFont> fontList = FontListFactory.get(content, ref, len);
-		res.setProperty(ModuleAttributes.FONT_LIST, fontList);
-
-		ref = content.getInt(offset, POS_CANVAS_LIST);
-		len = content.getInt(offset, POS_CANVAS_LIST_LEN);
-		res.setProperty(ModuleAttributes.CANVAS_LIST, CanvasListFactory.get(content, ref, len, fontList));
-
-		ref = content.getInt(offset, POS_EDITOR_LIST);
-		len = content.getInt(offset, POS_EDITOR_LIST_LEN);
-		res.setProperty(ModuleAttributes.EDITOR_LIST, EditorListFactory.get(content, ref, len));
-
 		ref = content.getInt(offset, POS_PARAMETER_LIST);
 		len = content.getInt(offset, POS_PARAMETER_LIST_LEN);
 		res.setProperty(ModuleAttributes.PARAMETER_LIST, ParameterListFactory.get(content, ref, len));
@@ -179,10 +155,6 @@ public class FormModuleFactory extends AbstractFactory {
 		ref = content.getInt(offset, POS_WARNING_LIST);
 		len = content.getInt(offset, POS_WARNING_LIST_LEN);
 		res.setProperty(ModuleAttributes.WARNING_LIST, AlertListFactory.get(content, ref, len));
-
-		ref = content.getInt(offset, POS_VISUAL_GROUP_LIST);
-		len = content.getInt(offset, POS_VISUAL_GROUP_LIST_LEN);
-		res.setProperty(ModuleAttributes.VISUAL_GROUP_LIST, VisualGroupListFactory.get(content, ref, len));
 
 		res.setProperty(ModuleAttributes.VISUAL_GROUP_RECORD, content.getInt(offset, POS_VISUAL_GROUP_RECORD));
 
@@ -218,11 +190,11 @@ public class FormModuleFactory extends AbstractFactory {
 
 		ref = content.getInt(offset, POS_LIBRARY_LIST);
 		res.setProperty(ModuleAttributes.LIBRARY_LIST, LibraryListFactory.get(content, ref));
-		
+
 		ref = content.getInt(offset, POS_USER_NAMED_LIST);
 		len = content.getInt(offset, POS_USER_NAMED_LIST_LEN);
 		List<String> userNames = UserNamedListFactory.get(content, ref, len);
-		
+
 		ref = content.getInt(offset, POS_TRIGGER_LIST);
 		len = content.getInt(offset, POS_TRIGGER_LIST_LEN);
 		res.setProperty(ModuleAttributes.TRIGGER_LIST, TriggerListFactory.get(content, ref, len, userNames));
@@ -230,7 +202,7 @@ public class FormModuleFactory extends AbstractFactory {
 		ref = content.getInt(offset, POS_PROGRAM_UNIT_LIST);
 		res.setProperty(ModuleAttributes.PROGRAM_UNIT_LIST, ProgramUnitListFactory.get(content, ref));
 
-		
+
 		// TODO: read properties
 
 		return res;

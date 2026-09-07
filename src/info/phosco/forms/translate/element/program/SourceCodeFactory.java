@@ -28,17 +28,25 @@ public class SourceCodeFactory extends AbstractFactory {
 		return len;
 	}
 
+	// Position (relative to offset) where the PL/SQL text is hypothesized to
+	// start, right after the 4-byte length field at POS_SIZEOF. NOT yet
+	// validated against a real .fmb (Forms Builder) - cross-check before
+	// trusting the extracted text.
+	private static final int POS_TEXT = POS_SIZEOF + 0x4;
+
 	public static SourceCode instance(Content content, int offset) throws FileStructureTypeException {
 
-		// TODO: for tests only
+		int length = getLength(content, offset);
 
-		UnsignedByteBuffer bf = UnsignedByteBuffer.wrap(content.getByteArray(offset, 0, getLength(content, offset)));
-		AbstractFileStructure fs = new AbstractFileStructure(bf, 0, getLength(content, offset)) {
+		// TODO: for tests only
+		UnsignedByteBuffer bf = UnsignedByteBuffer.wrap(content.getByteArray(offset, 0, length));
+		AbstractFileStructure fs = new AbstractFileStructure(bf, 0, length) {
 		};
 		log.finest("\n" + fs.formatHex(true, true, false, 24));
 
 		SourceCode res = new SourceCode(offset);
-		res.setProperty(ProgramUnitAttributes.LENGTH, getLength(content, offset));
+		res.setProperty(ProgramUnitAttributes.LENGTH, length);
+		res.setProperty(ProgramUnitAttributes.TEXT, content.getString(offset, POS_TEXT, length));
 
 		return res;
 	}

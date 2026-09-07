@@ -51,6 +51,7 @@ public class FormTrigger implements FormElement<TriggerAttributes> {
 		
 		out += "\nDisplay in 'Keyboard Help'                 : " + getProperty(TriggerAttributes.DISPLAY_KEYBOARD_HELP);
 		out += "\n'Keyboard Help' Text                       : " + getProperty(TriggerAttributes.KEYBOARD_HELP_TEXT);
+		out += "\nPL/SQL                                     :\n" + getProperty(TriggerAttributes.TEXT);
 		return out;
 	}
 

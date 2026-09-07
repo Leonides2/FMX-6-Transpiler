@@ -28,6 +28,7 @@ public class SourceCode {
 		String out = "";
 		out += "\nOffset                                     : " + Integer.toHexString(getOffset());
 		out += "\nLength                                     : " + Integer.toHexString((int) getProperty(ProgramUnitAttributes.LENGTH));
+		out += "\nPL/SQL                                     :\n" + getProperty(ProgramUnitAttributes.TEXT);
 
 		return out;
 	}
