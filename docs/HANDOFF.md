@@ -5,103 +5,148 @@ en los otros docs de esta carpeta — léelos en este orden si necesitas el deta
 
 1. `fmx-bytecode-notes.md` — por qué el `.fmx` NO sirve para lógica (bytecode Diana sin documentar).
 2. `fmb-format-notes.md` — cómo se extrae la lógica y el árbol de nombres directo del `.fmb` binario.
-3. `fmt-format-notes.md` — el hallazgo más fuerte: el `.fmt` (export a texto de Forms Builder) es un
-   modelo de objetos estructurado, mucho más confiable que reversear el `.fmb`.
+3. `fmt-format-notes.md` — **el camino principal**: el `.fmt` (export a texto de Forms Builder) es un
+   modelo de objetos estructurado. Su segunda mitad tiene el mapeo de códigos derivado del corpus completo.
 4. `credits-and-references.md` — qué se tomó del repo externo `LUMC/fmb2txt` y por qué.
+5. `plan-fmb-fmx.md` — **plan propuesto (sin implementar)** para atacar el `.fmb` y el `.fmx` con el
+   ground truth que ahora da el `.fmt`. Pendiente de revisión del usuario.
 
 ## Objetivo del usuario
 
 Extraer la lógica de negocio (PL/SQL de triggers/program units) y la estructura (bloques/ítems/columnas)
-de una aplicación completa Oracle Forms 6 (muchos formularios, tiene `.fmb`+`.fmx` de casi todo el
-aplicativo), para poder migrarla a otro lenguaje/plataforma. Primero como XML/texto intermedio.
+de una aplicación completa Oracle Forms 6, para poder migrarla a otro lenguaje/plataforma. Primero como
+XML/texto intermedio.
+
+## Dónde está el trabajo hoy
+
+**El camino `.fmt` → XML está terminado y corrido sobre el aplicativo entero.** Lo que queda es
+aprovechar ese XML (o afinar detalles), no seguir haciendo ingeniería inversa básica.
+
+Números del último corrido completo (reproducible, ver "Cómo verificar" abajo):
+
+| | |
+|---|---|
+| formularios convertidos | **176 / 176** (0 fallos) |
+| registros parseados | 1.723.047 |
+| objetos | 187.169 |
+| **propiedades huérfanas** | **0** |
+| triggers extraídos | **11.969** |
+| program units extraídos | **5.612** |
+| fuentes con layout confirmado | 17.579 / 17.581 (**99,99%**) |
+| XML generado | 92,9 MB, los 176 bien formados |
+
+Validado además contra el ground truth manual del usuario (`cr_cierr_datos.txt`): bloques, nombres de
+triggers, texto exacto del PL/SQL, y lista+orden de ítems coinciden exacto. Los tipos de ítem salen bien
+clasificados (`BUT_ACEPTAR`=PushButton, `OPERACION_CIERRE`=RadioGroup, `ESTATUS`=DisplayItem).
 
 ## Qué existe hoy en el repo (todo compila con `javac`, JDK 23 disponible)
 
-- `src/info/phosco/forms/translate/**` — parser del **`.fmx`** heredado del proyecto original, recortado
-  (se eliminó todo lo puramente visual: canvas, gráficos, ventanas, fuentes, atributos visuales, editor,
-  visor JavaFX). Extrae bien la estructura de **data blocks** (nombre, WHERE/ORDER clause, etc.) — validado
-  contra archivos reales. **No sirve para lógica** (ver punto 1 arriba) y **no tiene Items** implementados
-  (`element/datablock/item/` solo tiene el enum `ItemType`, vacío).
-- `src/info/phosco/forms/fmb/**` — extractor de lógica desde el **`.fmb` binario crudo**, sin necesitar
-  exportar a texto:
-  - `FmbBuffer` — acceso a bytes crudos.
-  - `FmbLogicScanner` — escanea records `[4 bytes BE longitud][texto]` para reconstruir triggers
-    (con scope Form/Block/Item resuelto de su etiqueta) y program units completos. **Validado 100%**
-    contra transcripción manual del usuario (`cr_cierr_datos.txt`) y en un segundo archivo independiente.
-  - `NameAnchorScanner` — heurístico "todo nombre aparece duplicado pegado" para recuperar el árbol de
-    nombres (bloques→ítems→valores de radio) del `.fmb` crudo. Da una **lista plana**, sin nesting real
-    (se infiere por cercanía/orden). Validado en los mismos dos archivos.
-  - `TriggerGroup`/`ProgramUnitGroup` — agrupan/dedupen los matches crudos (a veces el mismo trigger
-    aparece 2+ veces en el archivo; si el contenido difiere entre copias, se reporta el conflicto en vez
-    de ocultarlo).
-  - `FmbXmlExporter`/`FmbHacker` (CLI) — vuelca todo esto a XML. Uso:
-    `java -cp build info.phosco.forms.fmb.FmbHacker archivo.fmb [salida.xml]`
-- `src/info/phosco/forms/fmt/**` — parser del **`.fmt`** (export a texto de Forms Builder, formato "ROS
-  Script"). Esto es lo más sólido del proyecto:
-  - `FmtParser` — parser genérico de la gramática `DEFINE <tabla> BEGIN campo=valor END` (soporta enteros,
-    `NULLP`, strings `<<"...">>`, blobs `(BLONG)` multi-línea).
-  - `FmtObjectGraph`/`FmtObject`/`FmtProperty` — interpreta el directorio de objetos (`FRM50_IDFO`) y las
-    tablas de propiedades genéricas (`F50T/F50N/F50B/F50P/F50S/F50O`) en un **árbol real** con
-    parent-child correcto (no heurístico). Validado: 4748 registros → 566 objetos, 0 propiedades huérfanas
-    en `CR_CIERR.fmt` completo.
-  - `FmtHacker` (CLI de prueba) — imprime el árbol. Uso:
-    `java -cp build info.phosco.forms.fmt.FmtHacker archivo.fmt [profundidad_maxima]`
-  - **Confirmado**: se puede reusar `FmbBuffer`+`FmbLogicScanner` (del paquete `fmb`) directamente sobre
-    el `byte[]` de una propiedad `BLONG` de un objeto `.fmt` para decodificar su trigger — sin cambiar una
-    línea de ese código. Ver el ejemplo en `fmt-format-notes.md`.
-  - **No implementado todavía**: un `FmtXmlExporter` (existe `FmbXmlExporter` para el paquete `fmb`, pero
-    no su equivalente para `fmt` — sería el mismo patrón, usando `info.phosco.forms.xml.XmlWriter`).
-- `src/info/phosco/forms/xml/XmlWriter.java` — escritor XML genérico, sin dependencias externas.
-  Sanitiza caracteres inválidos de XML 1.0 automáticamente (encontramos un NUL embebido real en datos
-  extraídos — ver el código, tiene esto ya resuelto). Ojo: al escribir a archivo, usar
-  `OutputStreamWriter(FileOutputStream, StandardCharsets.UTF_8)` explícito — `FileWriter` a secas usa el
-  charset por defecto de Windows y produce XML inválido si el texto tiene acentos reales (ya nos pasó,
-  ya está arreglado en `FmbHacker`, pero cualquier exportador nuevo debe recordar esto).
+- `src/info/phosco/forms/fmt/**` — **la parte sólida del proyecto**:
+  - `FmtParser` — parser de la gramática `DEFINE <tabla> BEGIN campo=valor END`.
+  - `FmtObjectGraph`/`FmtObject`/`FmtProperty` — árbol real de objetos con parent-child correcto
+    (no heurístico), con contadores de integridad.
+  - `FmtSchema` — **nuevo**: diccionario de tipos de objeto y códigos de propiedad, todo derivado del
+    corpus de 176 formularios. Solo nombra lo que tiene evidencia; el resto queda sin nombre a propósito.
+  - `FmtSourceDecoder` — **nuevo**: saca el PL/SQL del blob `464` de un trigger o program unit. No usa
+    `FmbLogicScanner` (barrido heurístico de archivo entero) porque aquí el blob ya pertenece a un objeto
+    conocido; reusa solo `FmbBuffer` para leer los registros `[len][payload]`.
+  - `FmtXmlExporter` — **nuevo**: vuelca el árbol real a XML. Nombra lo conocido como atributos, resuelve
+    la herencia por subclase, mete el PL/SQL en CDATA, y **emite igual las propiedades sin identificar**
+    como `<Property code="N372" value="22"/>` para no perder nada. Cierra con un `<Integrity>` que reporta
+    huérfanas/tablas no reconocidas/objetos fuera del árbol.
+  - `FmtToXml` — **nuevo**: CLI, un archivo o una carpeta completa en lote.
+  - `FmtHacker` — CLI viejo de prueba, imprime el árbol.
+- `src/info/phosco/forms/fmb/**` — extractor desde el `.fmb` binario crudo (`FmbLogicScanner`,
+  `NameAnchorScanner`, `FmbXmlExporter`, CLI `FmbHacker`). **Sigue siendo útil solo como respaldo** para
+  cuando no se pueda exportar el `.fmt`; da una lista plana de nombres sin anidamiento real.
+- `src/info/phosco/forms/translate/**` — parser del `.fmx` heredado y recortado. Extrae data blocks pero
+  no lógica ni items. Ya superado por el camino `.fmt`.
+- `src/info/phosco/forms/xml/XmlWriter.java` — escritor XML sin dependencias. Ojo con dos cosas que ya
+  están resueltas pero que cualquier código nuevo debe respetar: escribir siempre con
+  `OutputStreamWriter(..., StandardCharsets.UTF_8)` explícito (`FileWriter` a secas rompe los acentos), y
+  no indentar antes de cerrar un elemento cuyo contenido es texto (añadía espacios al PL/SQL extraído).
+- `scripts/Export-FmtBatch.ps1` — conversión en lote `.fmb`→`.fmt` con `ifcmp60`. **Ya se corrió**: es lo
+  que produjo los 176 `.fmt`.
 
-## Archivos de prueba reales (no están en el repo, viven en la máquina del usuario)
+## Archivos reales (en la máquina del usuario, no en el repo)
 
 `C:\Users\leoni\OneDrive\Documentos\Trabajo - Coopemapro\FMX\`:
-`CR_CIERR.FMB`, `cr_cierr.fmx`, `CR_CIERR.fmt`, `gl_cierres.fmb`, `gl_cierres.fmx`, `gl_cierres.fmt`,
-`cr_cierr_datos.txt` (ground truth manual del usuario — triggers y textos exactos de `BLK_DATOS`).
+- `FMT\` — **176 `.fmt`** del aplicativo completo (342 MB), salida de `Export-FmtBatch.ps1`.
+- `XML\` — **176 `.xml`** (92,9 MB), salida de `FmtToXml`, misma estructura de subcarpetas.
+- `CR_CIERR.FMB`, `cr_cierr.fmx`, `gl_cierres.*` — muestras sueltas.
+- `cr_cierr_datos.txt` — ground truth manual del usuario.
+
+## Restricción que manda las prioridades
+
+**Hay módulos en producción cuyo `.fmb` se perdió**: de ellos solo queda el `.fmx` compilado. Recuperar
+lo que se pueda de esos `.fmx` no es opcional — sin eso, esa lógica no se puede migrar. El objetivo del
+proyecto es un aplicativo open source, sin código propietario, que saque el máximo de los tres formatos
+para migrar pantallas y lógica asistido con IA.
+
+Eso reordena todo: la ruta `.fmx` pasa a ser el camino crítico y la `.fmb` baja a segundo lugar (para un
+módulo cuyo `.fmb` se perdió, un parser de `.fmb` no sirve de nada). El plan completo, con el método de
+validación y el costo/beneficio de cada paso, está en **`plan-fmb-fmx.md`** — pendiente de aprobación,
+nada de eso está implementado.
+
+Dos hallazgos medidos en esta sesión que condicionan ese plan:
+
+- **La estructura de pantalla sobrevive en el `.fmx`.** Los nombres de bloques, ítems, canvas, ventanas y
+  las etiquetas visibles están ahí (verificado en `cr_cierr.fmx`). Los nombres de trigger **no** — están
+  como códigos numéricos. Se pierde el texto del código, no la pantalla.
+- **El 81% de los triggers tiene un fuente que se repite entre módulos** (11.969 triggers, solo 3.275
+  fuentes distintos; `do_key('delete_record');` aparece en 171 módulos). Para un módulo huérfano, eso
+  abre recuperar el fuente **emparejando bytecode** contra los módulos que sí tienen fuente, sin
+  decodificar un solo opcode. Es el paso de mayor retorno del plan.
 
 ## Pendiente / próximos pasos (en orden de valor)
 
-1. **Mapear códigos de propiedad del `.fmt`** — sobre todo cuál da el "Item Type" real (hoy todos los
-   ítems comparten `IDFOS_TYP=30`, el tipo específico vive en alguna propiedad sin identificar). Usar como
-   vocabulario objetivo la lista de `credits-and-references.md` (`ItemType`, `Required`, `XPosition`, etc.
-   — nombres reales de la API oficial de Oracle). Metodología: correlacionar contra Property Palette de
-   Forms Builder para una muestra de ítems de tipos conocidos (radio group, botón, texto, display, imagen).
-2. **Escribir `FmtXmlExporter`** — mismo patrón que `FmbXmlExporter`, pero recorriendo el árbol real de
-   `FmtObjectGraph` (con nesting correcto) en vez de la lista plana de `NameAnchorScanner`.
-3. **Investigar si el usuario tiene acceso a `frmxmltools.jar`** (utilidad oficial `Forms2XML` de Oracle,
-   JDAPI) desde cualquier instalación de Forms/AS más nueva a la mano — si existe, probablemente reemplaza
-   gran parte de este trabajo de ingeniería inversa con la API oficial. Ver `credits-and-references.md`.
-4. **Exportación masiva de `.fmt`** — el usuario pidió un script de PowerShell para convertir en lote
-   una carpeta (y subcarpetas) de `.fmb`/`.mmb`/`.pll` a `.fmt` usando `ifcmp60 module=... script=YES
-   userid=...`. Confirmar con el usuario si ya lo corrió y qué tan bien generalizó a más formularios.
-5. **Decodificar el bytecode Diana del `.fmx`** (proyecto grande, ver `fmx-bytecode-notes.md`) — el
-   usuario tiene "casi todo el código" del aplicativo en pares `.fmb`/`.fmx`, corpus ideal para esto, pero
-   es trabajo de varias semanas. Baja prioridad mientras el camino `.fmt` siga rindiendo mejor por menos
-   esfuerzo.
-6. **Estructura del `.fmx`** (bloques ya funcionan; items/columns/record groups siguen sin implementar en
-   `info.phosco.forms.translate`) — probablemente ya no vale la pena invertir aquí dado que `.fmt` da todo
-   esto mejor y más barato. Confirmar con el usuario antes de retomarlo.
+1. **Decidir qué se hace con el XML** — es el paso que le toca al usuario. Ya está toda la lógica de
+   negocio del aplicativo en 176 XML navegables. La pregunta ya no es "cómo extraerlo" sino "a qué se
+   migra". Vale la pena preguntarle antes de seguir puliendo el extractor.
+2. **Exportar los módulos origen de la herencia** (`UP_BASE` y compañía). El 37% de los ítems hereda sus
+   propiedades de una librería de objetos externa, y esas propiedades **no están** en el `.fmt` del
+   formulario. Si la migración necesita geometría/propiedades de la barra de botones estándar, hay que
+   exportar también esos módulos y cruzarlos. El XML ya dice de dónde hereda cada objeto
+   (`<SubclassedFrom module="UP_BASE" object="OBJ_GENERAL"/>`).
+3. **Exportar menús y librerías** (`.mmb`→`.mmt`, `.pll`→`.pld`). El script ya los contempla pero en la
+   carpeta actual solo hay `.fmt` — o no se corrió sobre ellos, o el aplicativo no los tiene aparte.
+   Confirmar con el usuario: las librerías `.pll` suelen tener mucha lógica compartida.
+4. **Seguir mapeando códigos de propiedad**, si la migración los necesita. Quedan sin nombrar los
+   códigos de flags booleanos (Required/Enabled/Visible/Insert-Update-Query Allowed), que son muchos
+   `B<n>` con valores 0/1. La metodología que funcionó está documentada en `fmt-format-notes.md`
+   ("Cómo se identificaron los códigos"): correlacionar contra evidencia independiente, nunca adivinar.
+5. **Investigar `frmxmltools.jar`** (utilidad oficial `Forms2XML` de Oracle) — ver
+   `credits-and-references.md`. Con el camino `.fmt` ya rindiendo al 99,99% esto bajó bastante de
+   prioridad; serviría sobre todo como verificación cruzada independiente.
+6. **Recuperar lógica de los `.fmx` huérfanos** — **ahora sí hace falta**: existen esos módulos. Ver
+   `plan-fmb-fmx.md`, Fase B. El bytecode Diana (`fmx-bytecode-notes.md`) queda como último escalón, y con
+   un alcance mucho menor del que se pensaba gracias al emparejamiento por corpus.
+7. **Estructura del `.fmx`** en `info.phosco.forms.translate` — probablemente ya no vale la pena; el
+   `.fmt` da todo esto mejor. Confirmar con el usuario antes de retomarlo.
 
-## Estado de git al momento de este handoff
+## Estado de git
 
-Sin commitear (working tree, rama `master`): `docs/` completo, `src/info/phosco/forms/xml/`,
-`src/info/phosco/forms/fmt/`, y varios archivos nuevos/modificados en `src/info/phosco/forms/fmb/`
-(`FmbXmlExporter.java`, `NameAnchor.java`, `NameAnchorScanner.java`, `ProgramUnitGroup.java`,
-`TriggerGroup.java`, más cambios en `FmbBuffer.java`/`FmbHacker.java`). Hay un commit previo del usuario
-("minimal core", `d94ef9d`) que sí capturó el recorte inicial del `.fmx` (Fase 0). Nadie ha pedido commit
-de lo nuevo — confirmar con el usuario antes de commitear.
+El trabajo de la iteración anterior sí está commiteado (último commit: "added scripts to automated export
+of fmt and context for claude code in the next iteration"). **Lo de esta iteración está sin commitear**:
+`FmtSchema.java`, `FmtSourceDecoder.java`, `FmtXmlExporter.java`, `FmtToXml.java`, más cambios en
+`FmtObjectGraph.java` (método `allObjects()`), `XmlWriter.java` (arreglo de indentación en texto) y estos
+docs. Nadie ha pedido commit — confirmar con el usuario.
 
-## Cómo verificar que todo sigue compilando
+## Cómo verificar que todo sigue en pie
 
 ```
 cd "c:\Users\leoni\source\Web\FMX-6-Transpiler"
 rm -rf build && mkdir -p build
 javac -d build -cp src $(find src -name "*.java")
+
+# un formulario
+java -cp build info.phosco.forms.fmt.FmtToXml "...\FMX\FMT\cr_cierr\cr_cierr.fmt" salida.xml
+
+# el aplicativo completo (~3 min, necesita -Xmx6g por los .fmt de 12 MB)
+java -Xmx6g -cp build info.phosco.forms.fmt.FmtToXml "...\FMX\FMT" "...\FMX\XML"
 ```
 
-Sin salida = compiló bien. Luego probar contra los archivos reales de arriba con `FmbHacker`/`FmtHacker`.
+La última línea del lote debe decir `Convertidos: 176 | Fallidos: 0` y `huerfanas=0`. Si `huerfanas`
+sube o `respaldo` crece mucho, algo se rompió: son las dos señales de alarma del extractor.
+Con `--brief` se omiten las propiedades sin identificar (XML mucho más chico y legible, pero ya no es
+una vista completa del archivo).

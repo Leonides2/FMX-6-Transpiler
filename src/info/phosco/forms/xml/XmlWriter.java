@@ -31,6 +31,13 @@ public class XmlWriter implements AutoCloseable {
 	private final Deque<String> openTags = new ArrayDeque<>();
 	private boolean startTagOpen = false;
 	private boolean hasChildOrText = false;
+	/**
+	 * Whether the last thing written into the current element was text/CDATA
+	 * rather than a child element. Indentation must not be inserted before the
+	 * closing tag in that case: it would land *inside* the value and silently
+	 * append whitespace to extracted PL/SQL source.
+	 */
+	private boolean lastWasText = false;
 
 	public XmlWriter(Writer out) throws IOException {
 		this.out = out;
@@ -45,6 +52,7 @@ public class XmlWriter implements AutoCloseable {
 		openTags.push(name);
 		startTagOpen = true;
 		hasChildOrText = false;
+		lastWasText = false;
 		return this;
 	}
 
@@ -68,6 +76,7 @@ public class XmlWriter implements AutoCloseable {
 		closeStartTagIfNeeded();
 		out.write(escapeText(stripInvalidXmlChars(value)));
 		hasChildOrText = true;
+		lastWasText = true;
 		return this;
 	}
 
@@ -78,6 +87,7 @@ public class XmlWriter implements AutoCloseable {
 		out.write(stripInvalidXmlChars(value).replace("]]>", "]]]]><![CDATA[>"));
 		out.write("]]>");
 		hasChildOrText = true;
+		lastWasText = true;
 		return this;
 	}
 
@@ -117,7 +127,7 @@ public class XmlWriter implements AutoCloseable {
 			out.write("/>");
 			startTagOpen = false;
 		} else {
-			if (hasChildOrText) {
+			if (hasChildOrText && !lastWasText) {
 				newlineAndIndent();
 			}
 			out.write("</");
@@ -125,6 +135,7 @@ public class XmlWriter implements AutoCloseable {
 			out.write('>');
 		}
 		hasChildOrText = true; // this element is itself a "child" from the parent's point of view
+		lastWasText = false;
 		return this;
 	}
 

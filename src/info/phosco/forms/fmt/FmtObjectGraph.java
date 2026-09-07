@@ -103,6 +103,11 @@ public class FmtObjectGraph {
 		return byOid.get(oid);
 	}
 
+	/** Every object in the file, in the order the directory declared them. */
+	public java.util.Collection<FmtObject> allObjects() {
+		return byOid.values();
+	}
+
 	public int objectCount() {
 		return byOid.size();
 	}
